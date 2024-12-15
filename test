@@ -1,0 +1,86 @@
+package com.example.playertracker;
+
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.Location;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
+import org.bukkit.command.TabExecutor;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+public class PlayerTrackerPlugin extends JavaPlugin implements TabExecutor {
+
+    private Player selectedPlayer;
+
+    @Override
+    public void onEnable() {
+        // Register the /playerselect command
+        this.getCommand("playerselect").setExecutor(this);
+        this.getCommand("playerselect").setTabCompleter(this);
+
+        // Start a repeating task to log the player's location
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (selectedPlayer != null && selectedPlayer.isOnline()) {
+                    Location loc = selectedPlayer.getLocation();
+                    Bukkit.broadcastMessage(ChatColor.GREEN + "Player " + ChatColor.YELLOW + selectedPlayer.getName() + ChatColor.GREEN + " is at: " +
+                            ChatColor.BLUE + "(" + loc.getX() + ", " + loc.getY() + ", " + loc.getZ() + ")");
+                }
+            }
+        }.runTaskTimer(this, 0L, 20L * 60); // 60 seconds interval
+    }
+
+    @Override
+    public void onDisable() {
+        // Plugin shutdown logic if needed
+    }
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (command.getName().equalsIgnoreCase("playerselect")) {
+            if (!(sender instanceof Player)) {
+                sender.sendMessage(ChatColor.RED + "Only players can use this command.");
+                return true;
+            }
+
+            if (args.length != 1) {
+                sender.sendMessage(ChatColor.RED + "Usage: /playerselect <playername>");
+                return true;
+            }
+
+            Player player = Bukkit.getPlayer(args[0]);
+            if (player == null || !player.isOnline()) {
+                sender.sendMessage(ChatColor.RED + "Player not found or not online.");
+                return true;
+            }
+
+            selectedPlayer = player;
+            sender.sendMessage(ChatColor.GREEN + "Selected player: " + ChatColor.YELLOW + player.getName());
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (command.getName().equalsIgnoreCase("playerselect")) {
+            if (args.length == 1) {
+                List<String> playerNames = new ArrayList<>();
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    playerNames.add(player.getName());
+                }
+                Collections.sort(playerNames);
+                return playerNames;
+            }
+        }
+        return Collections.emptyList();
+    }
+}
